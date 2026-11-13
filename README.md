@@ -253,4 +253,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Built for the ITS Surabaya Information Systems portfolio. Not a betting tool — model edge ~5% over grid baseline is far too small and uncertain to act on.*
+*Built for project portfolio. Not a betting tool — model edge ~5% over grid baseline is far too small and uncertain to act on.*
