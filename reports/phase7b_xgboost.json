@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-11-11T02:15:56.350862+00:00",
+  "xgboost_mae": 3.237565281823436,
+  "xgboost_spearman": 0.6714993451372452,
+  "xgboost_podium_hit": 0.6840077071290944,
+  "xgboost_winner_hit": 0.5433526011560693,
+  "ridge_mae": 3.278430955778401,
+  "ridge_spearman": 0.6667580121512435,
+  "ridge_podium_hit": 0.6803118908382066,
+  "ridge_winner_hit": 0.5497076023391813,
+  "mean_delta_mae": -0.03721102381150712,
+  "bootstrap_ci_lower": -0.06511686822301478,
+  "bootstrap_ci_upper": -0.00576697572192985,
+  "bootstrap_ci_excludes_zero": true,
+  "sign_test_p": 0.0013382290107702656,
+  "wilcoxon_p": 0.000189461709192738,
+  "shuffled_mae_seeds": [
+    4.763860777804726,
+    4.763860777804726,
+    4.763860777804726
+  ],
+  "avg_shuffled_mae": 4.763860777804726,
+  "shuffled_gap": 1.5262954959812896,
+  "train_mae_mean": 3.1525982108933297,
+  "test_mae_mean": 3.236735990438467,
+  "train_test_gap": 0.08413777954513746,
+  "feature_importance_spearman_rho": 0.5174825174825175,
+  "feature_importance_pearson_r": 0.7594847925355562,
+  "verdict": "ACCEPTED",
+  "primary_criterion_pass": true,
+  "shuffle_control_pass": true
+}

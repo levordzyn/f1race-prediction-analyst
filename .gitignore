@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------- secrets
+# F1 account credentials - LOCAL ONLY, never publish or commit this file.
+# Keep it on this PC; the project is private.
+credentials.env
+*.env
+!.env.example
+
+# ---------------------------------------------------------------- data
+# Downloaded data / caches - large, regenerable, and not source code.
+f1.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+f1_cache/
+cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---------------------------------------------------------------- editors
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

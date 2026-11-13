@@ -1,0 +1,85 @@
+{
+  "timestamp": "2026-11-11T02:28:07.807459+00:00",
+  "ladder": {
+    "Ridge": {
+      "mae": 3.278430955778401,
+      "podium": 0.6803118908382066,
+      "winner": 0.5497076023391813,
+      "overfit": "~0.08",
+      "status": "Baseline"
+    },
+    "XGBoost": {
+      "mae": 3.237565281823436,
+      "podium": 0.6840077071290944,
+      "winner": 0.5433526011560693,
+      "overfit": "0.084",
+      "status": "ACCEPTED"
+    },
+    "LightGBM C2": {
+      "mae": 3.2381417786969493,
+      "podium": 0.6782273603082852,
+      "winner": 0.5317919075144508,
+      "overfit": "0.077",
+      "status": "ACCEPTED"
+    },
+    "LightGBM C1": {
+      "mae": 3.1193,
+      "podium": 0.678,
+      "winner": 0.514,
+      "overfit": "0.501",
+      "status": "REJECTED"
+    }
+  },
+  "head_to_head": {
+    "xgb_vs_lgb": {
+      "mean_delta": -0.0007511328233431347,
+      "ci_lower": -0.009682159814570846,
+      "ci_upper": 0.008222708093224344,
+      "sign_p": 0.7611429709016686,
+      "wilcoxon_p": 0.545811653475591,
+      "n_races": 173,
+      "ci_excludes_zero": false
+    }
+  },
+  "vs_ridge": {
+    "xgb": {
+      "mean_delta": -0.03721102381150712,
+      "ci_lower": -0.06511686822301478,
+      "ci_upper": -0.00576697572192985,
+      "sign_p": 0.0013382290107702656,
+      "wilcoxon_p": 0.000189461709192738,
+      "n_races": 173,
+      "ci_excludes_zero": true
+    },
+    "lgb": {
+      "mean_delta": -0.03645989098816399,
+      "ci_lower": -0.05914018770198988,
+      "ci_upper": -0.009748452045411861,
+      "sign_p": 0.0022621705763248906,
+      "wilcoxon_p": 0.00024494396910158833,
+      "n_races": 173,
+      "ci_excludes_zero": true
+    },
+    "ensemble": {
+      "mean_delta": -0.038226966774284735,
+      "ci_lower": -0.06351233269997167,
+      "ci_upper": -0.010197608860705499,
+      "sign_p": 0.00953802083428009,
+      "wilcoxon_p": 0.00014155957051596423,
+      "n_races": 173,
+      "ci_excludes_zero": true
+    }
+  },
+  "ensemble": {
+    "mae": 3.236457998086761,
+    "spearman": 0.6712508994652161,
+    "vs_best_single": 0.0011072837366752353
+  },
+  "feature_importance_spearman": {
+    "ridge_xgb": 0.5174825174825175,
+    "ridge_lgb": 0.49650349650349657,
+    "xgb_lgb": 0.9300699300699302
+  },
+  "final_model": "XGBoost",
+  "final_reason": "Statistically indistinguishable; XGBoost chosen for maturity, monotone constraints support, and ecosystem"
+}
