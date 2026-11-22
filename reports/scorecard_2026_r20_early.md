@@ -7,17 +7,23 @@
 - **Features (7):** driver_form, team_form, non_finish_rate, practice_pos, practice_gap_pct, practice_laps_30, no_practice_time
 - **Note:** generated after qualifying, practice-only features
 - **Scored on:** 22 of 22 forecast drivers
-- **Scorecard written:** 2026-11-08T21:50:21+00:00
+- **Scorecard written:** 2026-11-22T01:54:43+00:00
 
-## Model vs baselines (this race only)
+## Predicted top 3 vs Actual top 3
 
-| Ranking | MAE | Spearman | Winner hit | Podium hit |
-|---|---:|---:|---:|---:|
-| **MODEL** | 2.934 | 0.8475 | 0% | 33% |
-| practice-order baseline | 3.000 | 0.8091 | 0% | 67% |
-| recent-form baseline | 3.041 | 0.8180 | 0% | 33% |
+*See console output for the full predicted vs actual top-3 table with match markers.*
 
-**Improvement = model MAE - best baseline MAE = -0.066** (better by 2.20%, best baseline: practice-order baseline).
+## Top-10 actual vs predicted (see console output)
+
+## Model vs ALL baselines (this race only)
+
+| Ranking | MAE | Spearman | Winner hit | Podium hit | Source |
+|---|---:|---:|---:|---:|---|
+| **MODEL** | 2.934 | 0.8499 | 0% | 33% | — |
+| practice-order baseline | 2.500 | 0.8641 | 0% | 67% | — |
+| recent-form baseline | 2.814 | 0.8556 | 0% | 67% | — |
+
+**Improvement = model MAE - best baseline MAE = +0.434** (worse by 17.35%, best baseline: practice-order baseline).
 
 ## Winner and podium
 

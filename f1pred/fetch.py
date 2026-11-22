@@ -81,8 +81,14 @@ def _td_seconds(value) -> float | None:
     return float(pd.Timedelta(value).total_seconds())
 
 
-def _season_field_size(counts: list[int]) -> int:
-    """Most common cars-per-race for the season (20 or 22), never hard-coded."""
+def _season_field_size(counts: list[int], year: int | None = None) -> int:
+    """Most common cars-per-race for the season (20 or 22), never hard-coded.
+
+    For 2026+, the field size is 22 cars (11 teams). For earlier seasons, 20 cars.
+    If counts are provided, the modal is used as a fallback.
+    """
+    if year is not None and year >= 2026:
+        return 22
     if not counts:
         raise clean.DataValidationError("no races to size the field from")
     return max(set(counts), key=counts.count)
@@ -391,7 +397,7 @@ def assign_field_sizes(con, year: int, rounds: set[int] | None = None) -> int:
                  year)
         return 0
 
-    expected = _season_field_size([n for _, n in ran])
+    expected = _season_field_size([n for _, n in ran], year)
     failures = 0
     for rnd, n in rows:
         con.execute("UPDATE sessions SET expected_size=? WHERE year=? AND round=?",
@@ -880,13 +886,24 @@ def fetch_upcoming(con, year: int, rnd: int) -> dict:
     already = con.execute(
         "SELECT COUNT(*) FROM results WHERE year=? AND round=?",
         (year, rnd)).fetchone()[0]
-    if already:
+    
+    # Check if results are complete (expected field size for the season)
+    counts = [n for (n,) in con.execute(
+        "SELECT COUNT(*) FROM results WHERE year=? GROUP BY round", (year,))]
+    expected = _season_field_size(counts, year) if counts else 20  # 2026+ = 22, earlier = 20
+    results_complete = already >= expected
+    
+    if results_complete:
         log.info("%d R%d already has %d results row(s) - the normal fetch "
                  "path owns it, nothing to do", year, rnd, already)
         return {"year": year, "round": rnd, "event": event_name,
                 "status": "already-raced", "entrants": 0,
                 "practice_rows": 0, "qualifying_rows": 0,
                 "expected_size": None}
+    elif already:
+        # Results exist but incomplete - treat as unrun for fetching purposes
+        log.warning("%d R%d has %d/%d results (incomplete) - will fetch missing data",
+                    year, rnd, already, expected)
 
     now = _naive_utc(datetime.now(timezone.utc))
 
@@ -900,7 +917,7 @@ def fetch_upcoming(con, year: int, rnd: int) -> dict:
     counts = [n for (n,) in con.execute(
         "SELECT COUNT(*) FROM results WHERE year=? GROUP BY round",
         (year,))]
-    expected = _season_field_size(counts) if counts else None
+    expected = _season_field_size(counts, year) if counts else None
     
     # For 2018-2022, fetch meeting_key from FastF1 since OpenF1 not available
     meeting_key = existing_meeting_key
@@ -983,7 +1000,7 @@ def _expected_size(con, year: int, rnd: int) -> int | None:
         return int(row[0])
     counts = [n for (n,) in con.execute(
         "SELECT COUNT(*) FROM results WHERE year=? GROUP BY round", (year,))]
-    return _season_field_size(counts) if counts else None
+    return _season_field_size(counts, year) if counts else None
 
 
 def _session_start(ev, ident: str) -> str:

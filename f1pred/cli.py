@@ -104,6 +104,12 @@ def probe(con, year: int, rnd: int) -> dict:
     r = con.execute(
         "SELECT COUNT(*), SUM(grid IS NOT NULL AND grid > 0) FROM results"
         " WHERE year=? AND round=?", (year, rnd)).fetchone()
+    
+    # Determine expected field size for this season
+    # 2026 has 22 cars, earlier seasons have 20
+    expected_size = 22 if year >= 2026 else 20
+    results_complete = int(r[0] or 0) >= expected_size
+    
     return {
         "results": int(r[0] or 0),
         "grid_rows": int(r[1] or 0),
@@ -111,6 +117,8 @@ def probe(con, year: int, rnd: int) -> dict:
         "q_times": int(q[1] or 0),
         "p_rows": int(p[0] or 0),
         "p_laps": int(p[1] or 0),
+        "results_complete": results_complete,
+        "expected_size": expected_size,
     }
 
 
@@ -311,7 +319,10 @@ def main(argv: list[str] | None = None) -> int:
     info = probe(con, year, rnd)
     # A race with no results rows has not run: that is a FORECAST, not a
     # mistake - provided at least one pre-race session exists for it.
+    # A race with incomplete results (less than expected field size) is also
+    # not a valid forecast target - it's an incomplete data state.
     is_forecast = info["results"] == 0
+    results_complete = info.get("results_complete", False)
     info["forecast"] = is_forecast
     if is_forecast and info["q_rows"] == 0 and info["p_rows"] == 0:
         print(f"ERROR: {year} R{rnd} has no results, no qualifying and no "
@@ -321,6 +332,14 @@ def main(argv: list[str] | None = None) -> int:
               "at least one pre-race session: spec line 56 allows forecast "
               "mode 'only if the required session data is already "
               "published'.")
+        con.close()
+        return 1
+    # Refuse to forecast if results exist but are incomplete
+    if not is_forecast and not results_complete:
+        print(f"ERROR: {year} R{rnd} has incomplete results "
+              f"({info['results']}/{info['expected_size']} drivers).")
+        print("       This is an incomplete data state - cannot forecast.")
+        _wrap("Run fetch to complete the data, or wait for official results.")
         con.close()
         return 1
 
@@ -341,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Refuse to run forecast on already-run races in auto mode.
     # Explicit mode selection (--mode early/full) is allowed with warnings.
-    if args.mode == "auto" and not is_forecast and info["q_rows"] > 0:
+    if args.mode == "auto" and not is_forecast and info.get("results_complete", False) and info["q_rows"] > 0:
         print(f"ERROR: {year} R{rnd} already has results - that is a result, not a forecast. "
               f"In auto mode, a forecast may only be run while the race is unrun or pre-qualifying.")
         _wrap("Use --mode early or --mode full explicitly to run walk-forward "

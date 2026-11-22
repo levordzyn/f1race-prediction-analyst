@@ -7,7 +7,7 @@
 - **Features (12):** grid, driver_form, team_form, non_finish_rate, practice_pos, practice_gap_pct, practice_laps_30, no_practice_time, q_position, q_gap_pct, no_q_time, on_pole
 - **Note:** generated after qualifying, full feature set
 - **Scored on:** 22 of 22 forecast drivers
-- **Scorecard written:** 2026-11-11T02:28:25+00:00
+- **Scorecard written:** 2026-11-22T01:54:52+00:00
 
 ## Predicted top 3 vs Actual top 3
 
@@ -19,14 +19,12 @@
 
 | Ranking | MAE | Spearman | Winner hit | Podium hit | Source |
 |---|---:|---:|---:|---:|---|
-| **MODEL** | 2.777 | 0.8509 | 100% | 33% | — |
-| grid baseline | 11.500 | n/a | n/a | n/a | — |
-| practice-order baseline | 3.000 | 0.8091 | 0% | 67% | — |
-| recent-form baseline | 3.041 | 0.8180 | 0% | 33% | — |
+| **MODEL** | 2.934 | 0.8437 | 100% | 33% | — |
+| grid baseline | 10.318 | 0.0749 | 0% | 0% | — |
+| practice-order baseline | 2.500 | 0.8641 | 0% | 67% | — |
+| recent-form baseline | 2.814 | 0.8556 | 0% | 67% | — |
 
-**Improvement = model MAE - best baseline MAE = -0.223** (better by 7.45%, best baseline: practice-order baseline).
-
-**n/a:** grid baseline produced one identical value for every car in this race, so its ranking is constant: rank correlation is undefined and there is no distinct car to rank first. For the grid baseline that means no valid starting grid exists in `results` - either the race has not been fetched yet, or FastF1 published no grid at all (GridPosition of 0, -1 or NULL; 2026 R20 returned -1 for all 22 cars). Every slot is then filled with field size + 1, which is right for a pit-lane start but identical across the whole field.
+**Improvement = model MAE - best baseline MAE = +0.434** (worse by 17.34%, best baseline: practice-order baseline).
 
 ## Winner and podium
 
