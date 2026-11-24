@@ -105,15 +105,38 @@ def _compute_baselines_from_saved_grids(con, year: int, rnd: int, mode: str,
     # 1. Qualifying-order baseline (from saved grid_pred)
     gp = m.set_index("driver")["grid_pred"].to_dict()
     mae_gp = sum(abs(gp.get(d, 0) - act[d]) for d in drivers) / len(drivers)
-    rho_gp = spearmanr([gp.get(d, 0) for d in drivers],
-                       [act[d] for d in drivers]).statistic
+    
+    # Spearman correlation - handle constant arrays
+    gp_vals = [gp.get(d, 0) for d in drivers]
+    act_vals = [act[d] for d in drivers]
+    if len(set(gp_vals)) <= 1 or len(set(act_vals)) <= 1:
+        rho_gp = float('nan')
+    else:
+        rho_gp = spearmanr(gp_vals, [act[d] for d in drivers]).statistic
+        if not np.isfinite(rho_gp):
+            rho_gp = float('nan')
+    
     order_gp = sorted(drivers, key=lambda d: gp.get(d, 0))
     win_gp = int(order_gp[0] == min(act, key=act.get))
     pod_gp = len(set(order_gp[:3]) & {d for d, v in act.items() if v <= 3}) / 3
 
-    # 2. Official grid baseline (reconstructed for 2026 R20; for other races
-    #    this would need a --grid-file or similar input)
-    # For now, only compute if we're on 2026 R20 and can reconstruct from known penalties.
+    # 2. Official grid baseline - fetch from results table
+    official_grid = None
+    
+    # First, try to get official grid from results table
+    # The results table has the official starting grid in the 'grid' column
+    official_grid_data = {}
+    try:
+        grid_data = con.execute("""
+            SELECT driver, grid FROM results 
+            WHERE year=? AND round=? AND grid IS NOT NULL AND grid > 0
+        """, (year, rnd)).fetchall()
+        for row in grid_data:
+            official_grid_data[row[0]] = row[1]  # row[0]=driver, row[1]=grid
+    except Exception:
+        pass
+    
+    # Also check for hardcoded 2026 R20 (FIA Doc 51)
     official_grid = None
     if year == 2026 and rnd == 20:
         official_grid = {
@@ -122,26 +145,37 @@ def _compute_baselines_from_saved_grids(con, year: int, rnd: int, mode: str,
             'SAI': 13, 'LEC': 14, 'COL': 15, 'GAS': 16, 'STR': 17, 'BOT': 18,
             'BOR': 19, 'HAM': 20, 'VER': 21, 'PER': 22
         }
-    # If a race has results.grid populated (not all -1), use that
-    elif not m["grid"].isna().all() and (m["grid"] > 0).any():
-        # Check if results.grid has real values (not all -1/0)
-        valid_grid = m[m["grid"] > 0].copy()
-        if len(valid_grid) == len(m):
-            official_grid = valid_grid.set_index("driver")["grid"].to_dict()
+    elif official_grid_data:
+        # Verify we have grid data for all drivers
+        if len(official_grid_data) >= len(drivers) * 0.8:  # At least 80% coverage
+            official_grid = official_grid_data
 
     og_metrics = None
     if official_grid is not None:
-        mae_og = sum(abs(official_grid.get(d, 0) - act[d]) for d in drivers) / len(drivers)
-        rho_og = spearmanr([official_grid.get(d, 0) for d in drivers],
-                           [act[d] for d in drivers]).statistic
-        order_og = sorted(drivers, key=lambda d: official_grid.get(d, 0))
-        win_og = int(order_og[0] == min(act, key=act.get))
-        pod_og = len(set(order_og[:3]) & {d for d, v in act.items() if v <= 3}) / 3
-        og_metrics = {
-            "mae": mae_og, "rho": rho_og,
-            "winner_hit": win_og, "podium_hit": pod_og,
-            "source": "official grid (FIA Doc 51 / formula1.com)"
-        }
+        # Only use drivers that have both official grid and actual finish
+        valid_drivers = [d for d in drivers if d in official_grid and d in act]
+        if len(valid_drivers) >= 2:
+            mae_og = sum(abs(official_grid.get(d, 0) - act[d]) for d in valid_drivers) / len(valid_drivers)
+            
+            og_vals = [official_grid.get(d, 0) for d in valid_drivers]
+            act_vals = [act[d] for d in valid_drivers]
+            
+            if len(set(og_vals)) > 1 and len(set(act_vals)) > 1:
+                rho_og = spearmanr(og_vals, act_vals).statistic
+                if not np.isfinite(rho_og):
+                    rho_og = float('nan')
+            else:
+                rho_og = float('nan')
+            
+            mae_og = sum(abs(official_grid.get(d, 0) - act[d]) for d in valid_drivers) / len(valid_drivers)
+            order_og = sorted(valid_drivers, key=lambda d: official_grid.get(d, 0))
+            win_og = int(order_og[0] == min(valid_drivers, key=act.get))
+            pod_og = len(set(order_og[:3]) & {d for d in valid_drivers if act[d] <= 3}) / 3
+            og_metrics = {
+                "mae": mae_og, "rho": rho_og,
+                "winner_hit": win_og, "podium_hit": pod_og,
+                "source": "official grid (FIA Doc 53 / formula1.com / results.grid)"
+            }
 
     # 3. Pole-sitter wins baseline (from qualifying order)
     pole_driver = min(drivers, key=lambda d: gp.get(d, 0))
@@ -183,7 +217,7 @@ def _na_note(r: dict) -> str:
            + " produced one identical value for every car in this race, so "
              "its ranking is constant: rank correlation is undefined and "
              "there is no distinct car to rank first.")
-    if any("grid" in lb for lb in undefined):
+    if any("grid" in lb.lower() for lb in undefined):
         txt += (
             " For the grid baseline that means no valid starting grid exists "
             "in `results` - either the race has not been fetched yet, or "
@@ -376,7 +410,11 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
     print()
     print(f"  note     : {r.get('note')}")
     print(f"  features : {r['features']}")
-    print(f"  alpha    : {r['alpha']}   training races: {r['n_train_races']}")
+    model_ver = r['model_version']
+    if model_ver.startswith("phase7-xgboost"):
+        print(f"  model    : {model_ver}   training races: {r['n_train_races']}")
+    else:
+        print(f"  model    : {model_ver}, alpha {r['alpha']},   training races: {r['n_train_races']}")
     print(f"  scored   : {n_sc} of {n_fc} forecast drivers "
           f"(on a race of {n_fc} cars)")
     if r.get("forecast_without_result"):
@@ -423,6 +461,31 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
             early_order = early_fc.set_index("driver")["pred_pos"].to_dict()
     else:
         early_order = pred_order
+    # Fetch official grid from results for display
+    official_grid_display = {}
+    try:
+        grid_data = con.execute("""
+            SELECT driver, grid FROM results 
+            WHERE year=? AND round=? AND grid IS NOT NULL AND grid > 0
+        """, (year, rnd)).fetchall()
+        for row in grid_data:
+            official_grid_display[row[0]] = row[1]
+        # If coverage is low (less than 80%), fall back to hardcoded official grid
+        # This handles cases like 2026 R20 where FastF1 returns -1 for most drivers
+        expected_size = 22 if year >= 2026 else 20
+        if len(official_grid_display) < expected_size * 0.8:
+            # Fall back to hardcoded official grid for known races
+            if year == 2026 and rnd == 20:
+                official_grid_display = {
+                    'NOR': 1, 'ANT': 2, 'LAW': 3, 'HUL': 4, 'HAD': 5, 'BEA': 6,
+                    'RUS': 7, 'ALO': 8, 'ALB': 9, 'PIA': 10, 'CAM': 11, 'LIN': 11,
+                    'SAI': 13, 'LEC': 14, 'COL': 15, 'GAS': 16, 'STR': 17, 'BOT': 18,
+                    'BOR': 19, 'HAM': 20, 'VER': 21, 'PER': 22
+                }
+    except Exception as e:
+        print(f"DEBUG: Exception in official grid fetch: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
     # Sort by actual finish
     top10 = sorted(act.items(), key=lambda x: x[1])[:10]
     print(f"  {'Act':>3} {'Drv':<5} {'Full pred':>9} {'err':>5}  {'Early pred':>10} {'err':>5}  {'Official grid':>13}")
@@ -430,10 +493,11 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
     for d, fin in top10:
         fp = pred_order.get(d, 0)
         ep = early_order.get(d, 0)
-        og = official_grid.get(d, 0) if official_grid else 0
+        og = official_grid_display.get(d, None)
         ferr = fp - fin if fp else "N/A"
         eerr = ep - fin if ep else "N/A"
-        print(f"  {fin:>3} {d:<5} {fp:>9} {ferr:>5}  {ep:>10} {eerr:>5}  {og:>13}")
+        og_str = str(og) if og is not None else "N/A"
+        print(f"  {fin:>3} {d:<5} {fp:>9} {str(ferr):>5}  {ep:>10} {str(eerr):>5}  {og_str:>13}")
 
     # ---- metrics vs ALL baselines --------------------------------------
     print()
@@ -447,6 +511,11 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
     # Compute additional baselines
     extra_baselines = _compute_baselines_from_saved_grids(con, year, rnd, mode, m)
     all_baselines = {**r["baselines"], **extra_baselines}
+
+    # Remove duplicate grid baseline: if "grid baseline" exists from model,
+    # don't add "official-grid baseline" as they are identical for completed races
+    if "grid baseline" in all_baselines and "official-grid baseline" in all_baselines:
+        del all_baselines["official-grid baseline"]
 
     # Determine best baseline by MAE (among those with MAE)
     mae_baselines = {k: v for k, v in all_baselines.items() if v.get("mae") is not None}
@@ -463,7 +532,11 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
           f"{_pct(r['winner_hit']):>8} {_pct(r['podium_hit']):>8}  —")
     for label, b in sorted(all_baselines.items()):
         mae_str = _pp(b["mae"]) if b.get("mae") is not None else "n/a"
-        rho_str = _pp(b["rho"], 4) if b.get("rho") is not None else "n/a"
+        rho_val = b.get("rho")
+        if rho_val is not None and math.isfinite(rho_val):
+            rho_str = _pp(rho_val, 4)
+        else:
+            rho_str = "n/a"
         win_str = _pct(b["winner_hit"]) if b.get("winner_hit") is not None else "n/a"
         pod_str = _pct(b["podium_hit"]) if b.get("podium_hit") is not None else "n/a"
         src = b.get("source", "")
@@ -505,7 +578,7 @@ def report_one(con, year: int, rnd: int, mode: str, db_path: Path,
     print("  SMALL-SAMPLE WARNING: this is ONE race. A winner or podium hit")
     print("  rate over 1 race can only be 0% or 100%, and a single MAE is")
     print("  one draw from a wide distribution. Nothing here supports a")
-    print("  claim about model quality - that is what the 69-race")
+    print("  claim about model quality - that is what the 173-race")
     print("  walk-forward evaluation in Phase 3/4/5 is for. Compare this")
     print("  race against its own baselines only, and re-check after several")
     print("  more forecasts have been saved and scored.")

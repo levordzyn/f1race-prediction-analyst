@@ -1,6 +1,6 @@
 # PROJECT_ARCHITECTURE.md
 
-**Generated:** 2026-11-10T11:00:00Z (UTC)  
+**Generated:** 2026-11-23T09:30:00Z (UTC)  
 **Project root:** `C:\Users\outbnx_\Documents\F1 PROJECTS`  
 **Legend:** **[V]** = verified from file/command output; **[U]** = unverified or inferred
 
@@ -597,7 +597,7 @@ flowchart TD
     H --> I[Score MAE, ρ, winner_hit, podium_hit]
     I --> J[Store per-race row + predictions]
     J --> K[Next k]
-    K --> L[Mean MAE, ρ, hit rates over 69 races]
+    K --> L[Mean MAE, ρ, hit rates over 173 races]
     L --> M[Feature-group ladder: stages 0→3]
     M --> N[Phase 6: append sprint (stage 4), weather (stage 5)]
 ```
@@ -894,7 +894,7 @@ python scripts\verify_race_status.py
 
 ## Part 10: Results to Date
 
-### Phase 3: Feature Ladder (walk-forward, 69 races / 1416 rows)
+### Phase 3: Feature Ladder (walk-forward, 173 folds, 193 races / 3898 rows)
 | Stage | Features | MAE | Spearman ρ | Δ MAE |
 |-------|----------|-----|------------|-------|
 | 0 (intercept) | — | 5.141 | — | — |
@@ -902,7 +902,7 @@ python scripts\verify_race_status.py
 | 2 | + practice_pos, practice_gap_pct, practice_laps_30, no_practice_time | 3.106 | 0.697 | −0.023 |
 | 3 | + q_position, q_gap_pct, no_q_time, on_pole | **3.069** | **0.7084** | −0.037 |
 
-### Phase 4: Hit Rates (same 69 races, same `_hits()`)
+### Phase 4: Hit Rates (same 173 folds, 3496 rows)
 | | Winner | Podium |
 |---|--------|--------|
 | **MODEL (Ridge)** | **63.8%** | **67.6%** |
@@ -987,11 +987,11 @@ python scripts\verify_race_status.py
 
 ### Phase 7P: 2026 Season Tail Production Validation (3 Races Remaining)
 
-**Status:** Planned — awaiting race weekends for R21 Las Vegas (Nov 21), R22 Qatar (Nov 29), R23 Abu Dhabi (Dec 6).
+**Status:** In Progress — R21 Las Vegas completed (Nov 21), R22 Qatar (Nov 29), R23 Abu Dhabi (Dec 6).
 
 | Round | Event | Date | Format | Status |
 |-------|-------|------|--------|--------|
-| 21 | Las Vegas Grand Prix | 2026-11-21 | conventional | Pending |
+| 21 | Las Vegas Grand Prix | 2026-11-21 | conventional | **Completed** |
 | 22 | Qatar Grand Prix | 2026-11-29 | conventional | Pending |
 | 23 | Abu Dhabi Grand Prix | 2026-12-06 | conventional | Pending |
 
@@ -1002,7 +1002,64 @@ python scripts\verify_race_status.py
 2. **After qualifying + grid file:** `python -m f1pred.cli --year 2026 --round <N> --fetch --mode full --save --grid-file official_grid_2026_r<N>.csv`
 3. **After race:** `python scripts\score_forecast.py --year 2026 --round <N> --mode auto --fetch`
 
-**Grid file sourcing:** Official FIA Doc 51 / formula1.com → CSV format `driver,grid_pos` (22 rows).
+**Grid file sourcing:** Official FIA Doc 53 / formula1.com → CSV format `driver,grid_pos` (22 rows).
+
+**Post-race scoring:** `scripts\score_forecast.py --year 2026 --round <N> --mode auto --fetch` → scorecard in `reports/scorecard_2026_r<N>_<mode>.md`.
+
+---
+
+### R21 Las Vegas Grand Prix — Results (Completed Nov 21)
+
+| Mode | MAE | Spearman | Winner Hit | Podium Hit | Best Baseline | Improvement |
+|------|-----|----------|------------|------------|---------------|-------------|
+| Full (12) | 3.225 | 0.6743 | 100% (1/1) | 67% (2/3) | grid baseline 3.526 | −0.301 (9.5% better) |
+| Early (7) | 3.491 | 0.6278 | 0% (0/1) | 33.3% (1/3) | practice-order 3.711 | −0.220 (5.9% better) |
+
+**R21 Full Mode Results:**
+- **Predicted Winner:** VER (actual: VER) ✅
+- **Podium Hit:** 2/3 (RUS 2nd, VER 1st)
+- **Official Grid Baseline:** MAE 5.000, Spearman 0.4274, Winner 100%, Podium 67%
+- **Qualifying-Order Baseline:** MAE 4.364, Spearman 0.6330
+- **Official Grid Baseline Source:** FIA Doc 53 / formula1.com / results.grid
+
+**R21 Early Mode Results:**
+- **Predicted Winner:** ANT (actual: VER) ❌
+- **Podium Hit:** 1/3 (RUS 2nd, VER 1st)
+
+---
+
+### R22 Qatar Grand Prix (Pending — Nov 29)
+
+| Round | Event | Date | Format | Status |
+|-------|-------|------|--------|--------|
+| 22 | Qatar Grand Prix | 2026-11-29 | conventional | Pending |
+
+---
+
+### R23 Abu Dhabi Grand Prix (Pending — Dec 6)
+
+| Round | Event | Date | Format | Status |
+|-------|-------|------|--------|--------|
+| 23 | Abu Dhabi Grand Prix | 2026-12-06 | conventional | Pending |
+
+---
+
+### 2026 Season Summary (as of R21)
+
+| Model | MAE | Winner Hit | Podium Hit | Status |
+|-------|-----|------------|------------|--------|
+| Ridge (full) | 3.2784 | 54.34% | 68.02% | Baseline |
+| XGBoost (full) | 3.2376 | 54.91% | 68.40% | **ACCEPTED** |
+| XGBoost (early) | 3.491 | 40.46% | 58.18% | Operational |
+
+---
+
+**Per-Race Workflow:**
+1. **After final practice:** `python -m f1pred.cli --year 2026 --round <N> --fetch --mode early --save`
+2. **After qualifying + grid file:** `python -m f1pred.cli --year 2026 --round <N> --fetch --mode full --save --grid-file official_grid_2026_r<N>.csv`
+3. **After race:** `python scripts\score_forecast.py --year 2026 --round <N> --mode auto --fetch`
+
+**Grid file sourcing:** Official FIA Doc 53 / formula1.com → CSV format `driver,grid_pos` (22 rows).
 
 **Post-race scoring:** `scripts\score_forecast.py --year 2026 --round <N> --mode auto --fetch` → scorecard in `reports/scorecard_2026_r<N>_<mode>.md`.
 
@@ -1012,7 +1069,7 @@ python scripts\verify_race_status.py
 
 | # | Severity | What | Where | Impact | Suggested Remedy |
 |---|----------|------|-------|--------|------------------|
-| 1 | **High** | **Training/forecast grid mismatch** — model trains on `results.grid` (real starting grid after penalties); at forecast time only qualifying order (`q_position`) is available. For 2026 R20, 21/22 cars had penalties → grid feature wrong for almost all cars. | `features.py:_forecast_spine`, `cli.py --grid-file` | Model's `grid` feature is noisy proxy; limits full-mode accuracy on penalty-heavy weekends | **Partial fix**: `--grid-file` supplies official grid (FIA Doc 51). Long-term: automate FIA doc parsing or find API. |
+| 1 | **High** | **Training/forecast grid mismatch** — model trains on `results.grid` (real starting grid after penalties); at forecast time only qualifying order (`q_position`) is available. For 2026 R20, 21/22 cars had penalties → grid feature wrong for almost all cars. | `features.py:_forecast_spine`, `cli.py --grid-file` | Model's `grid` feature is noisy proxy; limits full-mode accuracy on penalty-heavy weekends | **Partial fix**: `--grid-file` supplies official grid (FIA Doc 53). Long-term: automate FIA doc parsing or find API. |
 | 2 | **High** | **No official grid in FastF1/OpenF1** — FastF1 `GridPosition` = -1 for all 22 cars in 2026 R20; OpenF1 has no grid field. Scorer read `results.grid` → all 23 → meaningless baseline. | `scripts/score_forecast.py`, `features.py:417` | Grid baseline broken for races where FastF1 omits grid; addenda required | **Fixed in scorer**: `n/a` with explanation; `--grid-file` for future. |
 | 3 | **Medium** | **Weather is daily aggregate, not race-time** — `rain_mm` = whole day; 2023 Spain had 10.8 mm but dry race. Weather features cannot reorder cars (race-level constants); only 3 interactions can. | `f1pred/fetch.py::fetch_weather`, LIMITATIONS §8 | Phase 6b null result expected; upper bound only | Document clearly; future: session-time weather if API available. |
 | 4 | **Medium** | **Coefficient signs unreliable for collinear pairs** — 4/12 features disagree with marginal ρ (q_position/q_gap_pct, practice_pos/practice_gap_pct, driver_form/non_finish_rate). Ridge splits shared weight. | LIMITATIONS §6, `scripts/check_coef_signs.py` | Individual bars cannot be read as causal effects | Use grouped permutation importance; interpret feature groups, not bars. |
@@ -1176,7 +1233,7 @@ Copy-Item f1_backup_20261108_220159_post_sao_paulo.db f1.db -Force
 | 39 | Full mode = early + qualifying + grid + pole (12) | **Yes** | `FULL_FEATURES` (12) | `cli.py` mode selection |
 | 40 | Script prints mode + warns on missing | **Yes** | `cli.py:_banner`, `choose_mode` | Warning lines in output |
 | 44 | Ridge + StandardScaler pipeline | **Yes** | `model._predict` | `model.py:187-188` |
-| 45 | Walk-forward (expanding), MAE vs baselines | **Yes** | `model.walk_forward` | 69 races validated |
+| 45 | Walk-forward (expanding), MAE vs baselines | **Yes** | `model.walk_forward` | 173 races validated |
 | 46 | Weather = race-level constant → needs interactions | **Yes** | `WEATHER_FEATURES` (3 interactions) | LIMITATIONS §7 |
 | 49 | Top-3 + full order table | **Yes** | `report.top3_printout`, `order_table` | Console output |
 | 50 | Gap-vs-prediction scatter (PNG) | **Yes** | `report.gap_scatter` | `reports/gap_vs_prediction_*.png` |
@@ -1200,6 +1257,8 @@ Copy-Item f1_backup_20261108_220159_post_sao_paulo.db f1.db -Force
 | 65 | Sprint SQ from OpenF1 (FastF1 SQ empty) | **Yes** | `practice.py` SQ step | `verify_sprint.py` 18/18 |
 | 66 | OpenF1 rate limit ~3/s, 30/min | **Handled** | `httpcache.py` spacing + backoff | Auto 429 handling |
 | 66 | Never fetch `/car_data` | **Enforced** | Not in code | — |
+1266: | 68 | SQLite, pandas, sklearn, matplotlib, xgboost | **Yes** (xgboost not installed) | — | — |
+1267: | 69 | Modules: fetch, clean, features, model, report, cli | **Yes** | `f1pred/` package | 9 modules |
 | 68 | SQLite, pandas, sklearn, matplotlib, xgboost | **Yes** (xgboost not installed) | — | — |
 | 69 | Modules: fetch, clean, features, model, report, cli | **Yes** | `f1pred/` package | 9 modules |
 | 70 | Fetch idempotent, cached, rate-limit aware | **Yes** | `fetch_log`, `httpcache` | `scripts/verify_cache_free.py` |

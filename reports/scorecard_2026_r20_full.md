@@ -7,7 +7,7 @@
 - **Features (12):** grid, driver_form, team_form, non_finish_rate, practice_pos, practice_gap_pct, practice_laps_30, no_practice_time, q_position, q_gap_pct, no_q_time, on_pole
 - **Note:** generated after qualifying, full feature set
 - **Scored on:** 22 of 22 forecast drivers
-- **Scorecard written:** 2026-11-22T01:54:52+00:00
+- **Scorecard written:** 2026-11-24T11:03:29+00:00
 
 ## Predicted top 3 vs Actual top 3
 
