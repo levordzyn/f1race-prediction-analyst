@@ -1,7 +1,6 @@
 # PROJECT_ARCHITECTURE.md
 
-**Generated:** 2026-11-23T09:30:00Z (UTC)  
-**Project root:** `C:\Users\outbnx_\Documents\F1 PROJECTS`  
+**Generated:** 2026-11-23T09:30:00Z (UTC)   
 **Legend:** **[V]** = verified from file/command output; **[U]** = unverified or inferred
 
 ---
